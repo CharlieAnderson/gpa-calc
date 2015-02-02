@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Charles Anderson">
+    <link href="css/style.css" rel="stylesheet">
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+
+<script src="https://cdn.firebase.com/js/client/2.1.1/firebase.js"></script>
+
+<script src="lib/sweet-alert.min.js"></script> 
+<link rel="stylesheet" type="text/css" href="lib/sweet-alert.css">
+</head>
+
+
+<title>GPA </title>
+
+<body id="body">
+
+<div class="wrapper">
+<table id="tableid" align="left" >
+<caption>	GPA Calculation Table </caption>
+	<tr id="headtable">
+		<td id="class"> 
+			 <p> Class </p>
+				<input maxlength="10" id="inp" type="text" name="Class">
+		</td>
+
+		<td id="credits">  
+			 <p> Credits </p>
+			<select id="creds">
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+			</select>
+		</td>
+
+		<td id="grade"> 
+			 <p> Grade </p>
+			<select id="gradein">
+				<option value="A+"> A+ </option>
+				<option value="A "> A  </option>
+				<option value="A-"> A- </option>
+				<option value="B+"> B+ </option>
+				<option value="B "> B  </option>
+				<option value="B-"> B- </option>
+				<option value="C+"> C+ </option>
+				<option value="C "> C  </option>
+				<option value="C-"> C- </option>
+				<option value="D+"> D+ </option>
+				<option value="D "> D  </option>
+				<option value="D-"> D- </option>
+				<option value="F "> F  </option>
+			</select>
+		</td>
+
+		<td class="button_cell" id="addcell" > 
+			 <p id="addcell_text"> Add/Remove </p>
+			<button id="add" onclick="addrow()" >+</button>
+		</td>
+
+	</tr>
+
+
+	<tr id="entry" class="inputclass" >
+		<td class="class22">				
+		<input maxlength="10" class="class" type="text" >
+		</td>
+		<td class="credits"></td>
+		<td class="grade"></td>
+		<td class="button_cell">
+			<button onclick="removerow(this.parentNode.parentNode.id)" id="sub">-</button>
+		</td>
+
+	</tr>
+
+</table>
+
+</div>
+
+<p id="gpa_out" align="center"> You have a 
+	<span id="out1"> ... </span> 
+GPA from 
+	<span id="out2"> ... </span> 
+total credit hours and 
+	<span id="out3">...</span> 
+quality points.</p> 
+
+
+
+
+
+<p id="predict1" align="center"> 
+<br>
+Current Cumulative GPA: <input maxlength="4" class="inp_predict" type="text" id="cc_gpa" >
+<br>
+Total Credit Hours: <input maxlength="3" class="inp_predict" type="text" id="tot_hours">
+<br>
+
+
+
+<br>
+Fill out two of the following to find the third:
+<br>
+
+
+Needed/Predicted GPA: <input maxlength="4" class="inp_predict" type="text" id="PGPA_in">
+<br>
+Needed/Predicted Credit Hours: <input maxlength="4" class="inp_predict" type="text" id="PCH_in">
+<br>
+Wanted/Target Cumulative GPA: <input maxlength="4" class="inp_predict" type="text" id="TGPA_in" >
+<br>
+
+
+
+<button onclick="predict()" id="submit">Submit</button>
+</p> 
+
+
+
+<script>
+//IDEAS:
+//Todo: add login and maybe facebook login, then store user tables
+
+//Todo: grade planner to predict grade in a class
+
+//TODO: put javascript in js folder, import at top of this file.
+
+//Todo: might move the prediction section down to another page, then center the table
+
+
+ var webtable = new Firebase('https://gpa-calc.firebaseio.com');
+ var myapp = { count:1 };
+
+
+
+
+function addrow(){
+myapp.count++;
+var newid = document.getElementById("tableid").rows.length - 1;
+
+var className = document.getElementById("inp").value;
+
+if(className == null || classValidate(className)==false)
+{   
+	return;
+}
+
+	if(newid < 40)
+	{
+		var newrow = $("#entry").clone().hide().attr('id', 'entry'+myapp.count).appendTo("#tableid").fadeIn('fast');
+
+		document.getElementById("entry"+myapp.count).querySelector('.class').value=document.getElementById('inp').value;
+		document.getElementById("entry"+myapp.count).querySelector('.credits').innerHTML=document.getElementById('creds').value;
+		document.getElementById("entry"+myapp.count).querySelector('.grade').innerHTML=document.getElementById('gradein').value;
+	}
+	document.getElementById("inp").value="";
+	gpa_calc();
+};
+
+
+
+
+
+
+
+function removerow(row){
+	if(row != "entry")
+	{
+		var row1 = document.getElementById(row);
+		$(row1).fadeOut('fast', function(){
+			$(row1).empty();
+			gpa_calc();
+
+		});
+
+	}
+
+};
+
+
+
+
+
+
+
+
+
+function gpa_calc(){
+/*
+For each course, multiply the grade points defined for the grade (A=4, etc.) by the credit hours of the course
+Add all of the Quality Points
+Add all of the GPA Hours
+Divide the sum of the Quality Points by the GPA Hours
+*/
+	var all_credits = document.getElementsByClassName('credits');
+	var all_grades = document.getElementsByClassName('grade');
+	var total_creds = 0;
+	var qpts = 0;
+	var gpa =0;
+	for (var i = 1; i < all_credits.length; i++) 
+		{
+    	qpts += 1*((all_credits[i].innerHTML)*letterConvert(all_grades[i].innerHTML));
+    	
+    	total_creds += 1*(all_credits[i].innerHTML); //1* to prevent concatenation
+
+    	console.log(qpts);
+		}
+	gpa = (qpts/total_creds).toFixed(2);
+	console.log(gpa);
+	if(all_credits.length > 1){
+		document.getElementById("out1").innerHTML = gpa;
+		document.getElementById("cc_gpa").value = gpa;
+		document.getElementById("out2").innerHTML = total_creds;
+		document.getElementById("out3").innerHTML = (qpts.toFixed(2));
+		document.getElementById("tot_hours").value = total_creds;
+
+	}
+	else {
+		document.getElementById("out1").innerHTML = "0.00";
+		document.getElementById("cc_gpa").value = "0.00";
+		document.getElementById("out2").innerHTML = "0";
+		document.getElementById("out3").innerHTML = "0.00";
+		document.getElementById("tot_hours").value = "0";
+	}
+
+};
+
+
+
+
+
+
+
+
+
+function letterConvert(letter){
+	switch(letter){
+		case "A+":
+			return 4.00;
+
+		case "A ":
+			return 4.00;		
+
+		case "A-":
+			return 3.67;		
+
+		case "B+":
+			return 3.33;	
+
+		case "B ":
+			return 3.00;		
+
+		case "B-":
+			return 2.67;	
+
+		case "C+":
+			return 2.33;	
+
+		case "C ":
+			return 2.00;		
+
+		case "C-":
+			return 1.67;	
+
+		case "D+":
+			return 1.33;
+
+		case "D ":
+			return 1.00;	
+
+		case "D-":
+			return 0.67;	
+
+		case "F ":
+			return 0.00;				
+	}
+};
+
+
+
+
+
+function classValidate(txt){
+// Function to check for letters and numbers and spaces only    
+ var letterNumber = /^[0-9a-zA-Z\s]+[0-9a-zA-Z\s]*$/;  
+ if(txt.match(letterNumber))   
+  {  
+   return true;  
+  }  
+else  
+  {   
+sweetAlert("Oops...", "Please only enter alpha-numeric characters and/or spaces for class names!", "error");
+   return false;   
+  }  
+};
+
+
+
+
+
+function predict(){
+
+var cgpa = 1*document.getElementById("cc_gpa").value;
+var tot_hours = 1*document.getElementById("tot_hours").value;
+var gpa_need = 1*document.getElementById("PGPA_in").value;
+var hours_need = 1*document.getElementById("PCH_in").value;
+var	cgpa_want = 1*document.getElementById("TGPA_in").value;
+
+
+switch(inputValidate()){
+	case 0:
+		//input invalid
+		return;
+	case 2:
+		//find the needed GPA to get the target Cumulative GPA with the given predicted credit hours
+		gpa_need = ((cgpa_want*(tot_hours+hours_need))-(cgpa*tot_hours))/hours_need;
+        document.getElementById("PGPA_in").value = gpa_need.toFixed(2);		
+		break;
+	case 3:
+		//find how many credit hours are needed to get the target Cumulative GPA with the predicted GPA
+		hours_need = ((cgpa_want - cgpa)*tot_hours)/(gpa_need-cgpa_want);
+        document.getElementById("PCH_in").value = hours_need.toFixed(2);				
+		break;
+	case 4:
+		//find out how the cumulative GPA will change with the predicted GPA and predit Credit hours
+		cgpa_want = (cgpa*tot_hours + gpa_need*hours_need)/(hours_need+tot_hours)
+        document.getElementById("TGPA_in").value = cgpa_want.toFixed(2);				
+		break;
+	}
+return true;
+};
+
+function inputValidate(){
+
+//checks to see if the inputs for the gpa predictor are valid
+//maybe make this an anonynmous function of predict()
+var inputs = document.getElementsByClassName("inp_predict");
+var cgpa = document.getElementById("cc_gpa").value;
+var hours = document.getElementById("tot_hours").value;
+
+//check cumulative gpa and credit hours for valid inputs
+if(!($.isNumeric(cgpa)) || !($.isNumeric(hours)))
+{
+	sweetAlert("Oops...", "Please enter numeric values for your current total credit hours and/or cumulative GPA!", "error");
+	return 0;
+}
+
+
+
+var empty_count = 0;
+var i = 0;
+var empty_field =0;
+//check that exactly two fields were filled correctly
+for(i=2; i<inputs.length; i++)
+{
+	if(inputs[i].value == ""){
+		empty_count++;
+		empty_field = i;
+	}
+    else if(!($.isNumeric(inputs[i].value))){
+		sweetAlert("Oops...", "Please fill out the forms with only numeric values!", "error");
+	return 0;	
+	}
+}
+
+if(empty_count>1 || empty_count==0){
+	sweetAlert("Oops...", "Please fill out exactly two of the three forms before submitting!", "error");
+	return 0;
+}
+
+
+return empty_field;
+};
+
+
+
+</script>
+
+
+
+
+
+</body>
+</html>
